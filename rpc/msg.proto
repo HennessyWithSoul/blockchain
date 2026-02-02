@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package blockchain;
+option go_package = ".;rpc";
+
+import "google/protobuf/any.proto";
+
+// 交易类型枚举
+enum TxType {
+  TX_TYPE_UNKNOWN = 0;
+  TX_TYPE_TRANSFER = 1;
+  TX_TYPE_CALL = 2;
+  TX_TYPE_DEPLOY = 3;
+  TX_TYPE_STAKE = 4;
+}
+
+// 序列化的公钥（使用字节表示）
+message SerializedPublicKey {
+  bytes compressed_data = 1;  // 压缩格式的公钥字节
+  string curve = 2;           // 曲线类型
+}
+
+// 序列化的签名
+message SerializedSignature {
+  bytes r = 1;  // R 值的大端字节表示
+  bytes s = 2;  // S 值的大端字节表示
+}
+
+// 哈希
+message Hash {
+  bytes data = 1;
+}
+
+// 交易消息
+message Transaction {
+  TxType type = 1;
+  google.protobuf.Any tx_inner = 2;
+  SerializedPublicKey to = 3;
+  uint64 value = 4;
+  bytes data = 5;
+  SerializedPublicKey from = 6;
+  SerializedSignature signature = 7;
+  Hash hash = 8;
+  int64 first_seen = 9;
+}
+
+message BlockHeader {
+  uint32 version = 1;
+  Hash data_hash = 2;
+  Hash prev_block_hash = 3;
+  int64 timestamp = 4;
+  uint32 height = 5;
+  uint64 nonce = 6;
+}
+
+message Block {
+  BlockHeader header = 1;
+  repeated Transaction transactions = 2;
+  SerializedPublicKey validator = 3;
+  SerializedSignature signature = 4;
+  Hash hash = 5;
+}
+// 具体的交易内部类型
+message TransferTxInner {
+  string memo = 1;
+  uint64 gas_limit = 2;
+  uint64 gas_price = 3;
+}
+
+message CallTxInner {
+  bytes contract_address = 1;
+  bytes function_selector = 2;
+  bytes arguments = 3;
+  uint64 gas_limit = 4;
+  uint64 gas_price = 5;
+}
+
+message DeployTxInner {
+  bytes bytecode = 1;
+  bytes abi = 2;
+  uint64 gas_limit = 3;
+  uint64 gas_price = 4;
+}
+
+
+// RPC 服务请求和响应
+message SubmitTransactionRequest {
+  Transaction transaction = 1;
+}
+
+message SubmitTransactionResponse {
+  Hash tx_hash = 1;
+  bool success = 2;
+  string error = 3;
+}
+
+message SubmitBlockRequest {
+  Block block = 1;
+}
+
+message GetBlocksRequest {
+  uint32 start_height = 1;
+  uint32 end_height = 2;
+  uint32 limit = 3;
+}
+
+message GetBlocksResponse {
+  repeated Block blocks = 1;
+  bool success = 2;
+  string error = 3;
+  uint32 total_count = 4;
+}
+
+message GetTransactionRequest {
+  Hash tx_hash = 1;
+}
+
+message GetStatusRequest {
+
+}
+
+message GetStatusResponse {
+  uint32 current_height = 1;
+}
+
+message GetTransactionResponse {
+  Transaction transaction = 1;
+  bool exists = 2;
+}
+
+
+message GetBalanceResponse {
+  uint64 balance = 1;
+  bool success = 2;
+}
+
+
+message Empty{
+}
+// 区块链服务
+service BlockchainService {
+  rpc SubmitTransaction(SubmitTransactionRequest) returns (Empty);
+  rpc SubmitBlock(SubmitBlockRequest) returns (Empty);
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc GetBlock(GetBlocksRequest) returns (GetBlocksResponse);
+}
